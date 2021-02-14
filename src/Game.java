@@ -1,3 +1,5 @@
+import org.jetbrains.annotations.NotNull;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -8,9 +10,12 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class Game extends JPanel implements ActionListener {
 
+    private int GAME_HEIGHT = 300;
+    private int GAME_WIDTH = 300;
+
+    // Images that hold snake and food
     private Image food;
     private Image body;
-    private Image head;
     private Image head_up;
     private Image head_right;
     private Image head_down;
@@ -33,101 +38,42 @@ public class Game extends JPanel implements ActionListener {
     private int super_food_x;
     private int super_food_y;
 
-    private Timer timer;
+    private final Timer timer;
 
     private boolean playing = true;
-
-    private boolean inGame = false;
-
     private boolean start = false;
+    private int super_on = 0;
 
     private int score = 0;
-
     private int super_score = 0;
 
-    private int time = 15;
+    private int lap = 0;
+    private boolean keyPressed = false;
 
     public Game() {
         setFocusable(true);
-        setPreferredSize(new Dimension(300, 300));
-        init();
-    }
-
-    public void init() {
-
-        inGame = true;
-
-        reset();
-
-        addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                int key = e.getKeyCode();
-                switch (key) {
-                    case KeyEvent.VK_UP:
-                        if (direction != DOWN) {
-                            direction = UP;
-                        }
-                        break;
-                    case KeyEvent.VK_RIGHT:
-                        if (direction != LEFT) {
-                            direction = RIGHT;
-                        }
-                        break;
-                    case KeyEvent.VK_DOWN:
-                        if (direction != UP) {
-                            direction = DOWN;
-                        }
-                        break;
-                    case KeyEvent.VK_LEFT:
-                        if (direction != RIGHT) {
-                            direction = LEFT;
-                        }
-                        break;
-                    case KeyEvent.VK_ENTER:
-                        if (!playing) {
-                            reset();
-                            playing = true;
-                        }
-                        break;
-                    case KeyEvent.VK_P:
-                        if (timer.isRunning()) {
-                            timer.stop();
-                        } else {
-                            timer.start();
-                        }
-                        break;
-                    default:
-                        direction = RIGHT;
-                        break;
-                }
-            }
-        });
-
-        ImageIcon iib = new ImageIcon("src/resources/body.png");
-        body = iib.getImage();
-        ImageIcon iih = new ImageIcon("src/resources/head.png");
-        head = iih.getImage();
-        ImageIcon iif = new ImageIcon("src/resources/food.png");
-        food = iif.getImage();
-        ImageIcon iis = new ImageIcon("src/resources/super_food.png");
-        super_food = iis.getImage();
-
-        ImageIcon iiu = new ImageIcon("src/resources/head_up.png");
-        head_up = iiu.getImage();
-        ImageIcon iir = new ImageIcon("src/resources/head_right.png");
-        head_right = iir.getImage();
-        ImageIcon iid = new ImageIcon("src/resources/head_down.png");
-        head_down = iid.getImage();
-        ImageIcon iil = new ImageIcon("src/resources/head_left.png");
-        head_left = iil.getImage();
+        setPreferredSize(new Dimension(GAME_WIDTH, GAME_HEIGHT));
+        loadImages();
+        addKeyListener(new ControlsAdapter());
+        resetData();
 
         timer = new Timer(10, this);
         timer.start();
     }
 
-    private void reset() {
+    private void loadImages() {
+        body = new ImageIcon("src/resources/body.png").getImage();
+        food = new ImageIcon("src/resources/food.png").getImage();
+        super_food = new ImageIcon("src/resources/super_food.png").getImage();
+        head_up = new ImageIcon("src/resources/head_up.png").getImage();
+        head_right = new ImageIcon("src/resources/head_right.png").getImage();
+        head_down = new ImageIcon("src/resources/head_down.png").getImage();
+        head_left = new ImageIcon("src/resources/head_left.png").getImage();
+    }
 
+    private void resetData() {
+
+        lap = 0;
         score = 0;
         super_score = 0;
         super_on = 0;
@@ -141,13 +87,7 @@ public class Game extends JPanel implements ActionListener {
             ys[i] = 5;
         }
 
-        int[] new_position = nextFoodPosition();
-        food_x = new_position[0];
-        food_y = new_position[1];
-
-        int[] new_super_position = nextSuperFoodPosition();
-        super_food_x = new_super_position[0];
-        super_food_y = new_super_position[1];
+        resetFoodPosition();
 
         direction = RIGHT;
         playing = true;
@@ -156,46 +96,30 @@ public class Game extends JPanel implements ActionListener {
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        if (time == 15) {
-            time = 1;
-        } else {
-            time++;
-        }
-        if (start && !playing) {
-            playing = true;
-            reset();
-        }
-        if (playing) {
-            drawBoard(g);
-        } else {
-            drawEnd(g);
-        }
+        lap = lap > 6 ? 0 : lap + 1;
+        if (playing) drawBoard(g);
+        else drawGameOver(g);
     }
 
-    private int super_on = 0;
-
     private void drawBoard(Graphics g) {
+        boolean eaten = food_x == xs[0] && food_y == ys[0];
         if (super_food_x == xs[0] && super_food_y == ys[0] && super_on > 0) {
-            super_score += 1;
+            super_score++;
+            eaten = true;
             super_on = 0;
         }
-
-        boolean eaten = food_x == xs[0] && food_y == ys[0];
-        if (time == 7 || time == 15) {
+        if (lap == 7 || keyPressed) {
+            keyPressed = false;
             if (eaten) {
-                score += 1;
-                int[] new_positions = nextFoodPosition();
-                food_x = new_positions[0];
-                food_y = new_positions[1];
+                score++;
+                resetFoodPosition();
                 body_length++;
                 xs[body_length] = xs[body_length - 1];
                 ys[body_length] = ys[body_length - 1];
 
                 if (score % 10 == 0) {
-                    super_on = 300;
-                    int[] new_super_positions = nextFoodPosition();
-                    super_food_x = new_super_positions[0];
-                    super_food_y = new_super_positions[1];
+                    super_on = 300 + (score * 3);
+                    resetSuperFoodPosition();
                 }
             }
             for (int i = body_length - 1; i > 0; i--) {
@@ -215,6 +139,7 @@ public class Game extends JPanel implements ActionListener {
             if (direction == LEFT) {
                 xs[0] -= 1;
             }
+            lap = 0;
         }
 
         if (hasHitWall() || hasHitSelf()) {
@@ -224,6 +149,16 @@ public class Game extends JPanel implements ActionListener {
         }
         g.drawImage(food, food_x * BODY_PART_SIZE, food_y * BODY_PART_SIZE, this);
 
+        drawSnake(g);
+
+        if (super_on > 0) {
+            g.drawImage(super_food, super_food_x * BODY_PART_SIZE, super_food_y * BODY_PART_SIZE, this);
+        }
+        super_on--;
+        Toolkit.getDefaultToolkit().sync();
+    }
+
+    private void drawSnake(Graphics g) {
         for (int i = 0; i < body_length; i++) {
             if (i == 0) {
                 if (direction == UP) {
@@ -242,32 +177,23 @@ public class Game extends JPanel implements ActionListener {
                 g.drawImage(body, xs[i] * BODY_PART_SIZE, ys[i] * BODY_PART_SIZE, this);
             }
         }
-
-        if (super_on > 0) {
-            g.drawImage(super_food, super_food_x * BODY_PART_SIZE, super_food_y * BODY_PART_SIZE, this);
-        }
-        super_on--;
-        Toolkit.getDefaultToolkit().sync();
     }
 
-    private void drawEnd(Graphics g) {
-        String msg = "Game Over";
+    private void drawGameOver(Graphics g) {
         Font small = new Font("Helvetica", Font.BOLD, 14);
         FontMetrics fontMetrics = getFontMetrics(small);
         g.setColor(Color.BLUE);
         g.setFont(small);
-        g.drawString(msg, (300 - fontMetrics.stringWidth(msg)) / 2, (300 / 2) - 20);
+
+        String title = "Game Over";
+        g.drawString(title, (300 - fontMetrics.stringWidth(title)) / 2, (300 / 2) - 20);
 
         int total_score = score + (super_score * 5);
-        String msg_2 = "Score: " + total_score;
-        g.setColor(Color.BLUE);
-        g.setFont(small);
-        g.drawString(msg_2, (300 - fontMetrics.stringWidth(msg_2)) / 2, (300 / 2));
+        String score = "Score: " + total_score;
+        g.drawString(score, (300 - fontMetrics.stringWidth(score)) / 2, (300 / 2));
 
-        String msg_3 = "Press Enter to continue";
-        g.setColor(Color.BLUE);
-        g.setFont(small);
-        g.drawString(msg_3, (300 - fontMetrics.stringWidth(msg_3)) / 2, (300 / 2) + 20);
+        String instructions = "Press Enter to continue";
+        g.drawString(instructions, (300 - fontMetrics.stringWidth(instructions)) / 2, (300 / 2) + 20);
 
         Toolkit.getDefaultToolkit().sync();
     }
@@ -285,6 +211,12 @@ public class Game extends JPanel implements ActionListener {
         return false;
     }
 
+    private void resetFoodPosition() {
+        int[] newPosition = nextFoodPosition();
+        food_x = newPosition[0];
+        food_y = newPosition[1];
+    }
+
     private int[] nextFoodPosition() {
         int x = ThreadLocalRandom.current().nextInt(0, 30);
         int y = ThreadLocalRandom.current().nextInt(0, 30);
@@ -296,19 +228,45 @@ public class Game extends JPanel implements ActionListener {
         return new int[]{x, y};
     }
 
-    private int[] nextSuperFoodPosition() {
+    private void resetSuperFoodPosition() {
+        int[] newPosition = newSuperFoodPosition();
+        super_food_x = newPosition[0];
+        super_food_y = newPosition[1];
+    }
+
+    @NotNull
+    private int[] newSuperFoodPosition() {
         int x = ThreadLocalRandom.current().nextInt(0, 30);
         int y = ThreadLocalRandom.current().nextInt(0, 30);
         for (int i = 0; i < body_length; i++) {
             if ((xs[i] == x && ys[i] == y) || (food_x == x && food_y == y)) {
-                return nextSuperFoodPosition();
+                return newSuperFoodPosition();
             }
         }
         return new int[]{x, y};
     }
 
+    private class ControlsAdapter extends KeyAdapter {
+        @Override
+        public void keyPressed(@NotNull KeyEvent e) {
+            keyPressed = true;
+            int key = e.getKeyCode();
+            if (key == KeyEvent.VK_UP && direction != DOWN) direction = UP;
+            if (key == KeyEvent.VK_RIGHT && direction != LEFT) direction = RIGHT;
+            if (key == KeyEvent.VK_DOWN && direction != UP) direction = DOWN;
+            if (key == KeyEvent.VK_LEFT && direction != RIGHT) direction = LEFT;
+            if (key == KeyEvent.VK_ENTER && !playing) resetData();
+            if (key == KeyEvent.VK_P && timer.isRunning()) timer.stop();
+            if (key == KeyEvent.VK_P && !timer.isRunning()) timer.start();
+        }
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (start && !playing) {
+            playing = true;
+            resetData();
+        }
         repaint();
     }
 }
