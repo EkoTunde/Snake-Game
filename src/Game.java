@@ -10,9 +10,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class Game extends JPanel implements ActionListener {
 
-    private int GAME_HEIGHT = 300;
-    private int GAME_WIDTH = 300;
-
     // Images that hold snake and food
     private Image food;
     private Image body;
@@ -52,7 +49,7 @@ public class Game extends JPanel implements ActionListener {
 
     public Game() {
         setFocusable(true);
-        setPreferredSize(new Dimension(GAME_WIDTH, GAME_HEIGHT));
+        setPreferredSize(new Dimension(300, 300));
         loadImages();
         addKeyListener(new ControlsAdapter());
         resetData();
@@ -62,13 +59,13 @@ public class Game extends JPanel implements ActionListener {
     }
 
     private void loadImages() {
-        body = new ImageIcon("src/resources/body.png").getImage();
-        food = new ImageIcon("src/resources/food.png").getImage();
-        super_food = new ImageIcon("src/resources/super_food.png").getImage();
-        head_up = new ImageIcon("src/resources/head_up.png").getImage();
-        head_right = new ImageIcon("src/resources/head_right.png").getImage();
-        head_down = new ImageIcon("src/resources/head_down.png").getImage();
-        head_left = new ImageIcon("src/resources/head_left.png").getImage();
+        body = new ImageIcon(getClass().getResource("images/body.png")).getImage();
+        food = new ImageIcon(getClass().getResource("images/food.png")).getImage();
+        super_food = new ImageIcon(getClass().getResource("images/super_food.png")).getImage();
+        head_up = new ImageIcon(getClass().getResource("images/head_up.png")).getImage();
+        head_right = new ImageIcon(getClass().getResource("images/head_right.png")).getImage();
+        head_down = new ImageIcon(getClass().getResource("images/head_down.png")).getImage();
+        head_left = new ImageIcon(getClass().getResource("images/head_left.png")).getImage();
     }
 
     private void resetData() {
